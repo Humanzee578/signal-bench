@@ -1,0 +1,416 @@
+<!doctype html><html><head><meta charset=utf-8><title>The Signal Bench</title><meta name="robots" content="noindex,nofollow"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Signal Bench"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="theme-color" content="#F6F7F5"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" type="image/png" href="apple-touch-icon.png"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{color-scheme:light}
+  :root{
+    --ground:#F6F7F5; --surface:#FFFFFF; --surface-2:#EFF1EE;
+    --ink:#181D1B; --ink-2:#414945; --muted:#6B7370; --line:#DEE2DE; --line-2:#E9ECE8;
+    --accent:#0E6E5C; --accent-soft:#E2F0EC;
+    --fire:#B4690E; --fire-soft:#FBEEDA;
+    --held:#2E5EAA; --held-soft:#E2EAF7;
+    --crit:#A33A2C; --crit-soft:#F8E6E3;
+    --dim:#7C8480; --dim-soft:#ECEEEB;
+    --shadow:0 1px 2px rgba(24,29,27,.05), 0 1px 8px rgba(24,29,27,.04);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#121614; --surface:#1A211E; --surface-2:#222A26;
+      --ink:#E6EAE7; --ink-2:#B4BDB8; --muted:#8B948F; --line:#2C352F; --line-2:#232B27;
+      --accent:#4FBFA6; --accent-soft:#16302A;
+      --fire:#E0A44A; --fire-soft:#3A2D16;
+      --held:#7FA9E8; --held-soft:#182740;
+      --crit:#E08B7C; --crit-soft:#3A211D;
+      --dim:#8B948F; --dim-soft:#232B27;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 1px 8px rgba(0,0,0,.2);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#121614; --surface:#1A211E; --surface-2:#222A26;
+    --ink:#E6EAE7; --ink-2:#B4BDB8; --muted:#8B948F; --line:#2C352F; --line-2:#232B27;
+    --accent:#4FBFA6; --accent-soft:#16302A;
+    --fire:#E0A44A; --fire-soft:#3A2D16;
+    --held:#7FA9E8; --held-soft:#182740;
+    --crit:#E08B7C; --crit-soft:#3A211D;
+    --dim:#8B948F; --dim-soft:#232B27;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 1px 8px rgba(0,0,0,.2);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--ground); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    font-size:14px; line-height:1.5; margin:0;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1160px; margin:0 auto; padding:16px 16px 40px; display:flex; flex-direction:column; gap:18px}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace; font-variant-numeric:tabular-nums}
+
+  /* header */
+  header{display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:14px;
+         border-bottom:2px solid var(--ink); padding-bottom:8px}
+  h1{font-family:"IBM Plex Serif",Georgia,serif; font-weight:600; font-size:24px; line-height:1.15;
+     margin:0; letter-spacing:-.01em; text-wrap:balance}
+  .sub{color:var(--muted); font-size:12px; margin-top:2px; max-width:62ch}
+  .asof{text-align:right; font-size:11.5px; color:var(--muted); line-height:1.4}
+  .asof b{display:block; color:var(--ink); font-size:15px}
+
+  /* stat rail */
+  .rail{display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px}
+  .tile{background:var(--surface); border:1px solid var(--line); border-radius:7px; padding:7px 11px; box-shadow:var(--shadow); display:flex; align-items:baseline; gap:8px}
+  .tile .n{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums;
+           font-size:19px; font-weight:600; line-height:1.1; letter-spacing:-.02em}
+  .tile .l{font-size:10.5px; text-transform:uppercase; letter-spacing:.09em; color:var(--muted); margin-top:0; font-weight:500}
+  .tile.lit{border-color:var(--fire); background:var(--fire-soft)}
+  .tile.lit .n{color:var(--fire)}
+  .tile.key{border-color:var(--accent); background:var(--accent-soft)}
+  .tile.key .n{color:var(--accent)}
+
+  /* sections */
+  section{display:flex; flex-direction:column; gap:8px}
+  .hd{display:flex; align-items:center; gap:9px; border-bottom:1px solid var(--line); padding-bottom:4px}
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--accent); flex:none}
+  .dot.fire{background:var(--fire)} .dot.crit{background:var(--crit)} .dot.dim{background:var(--dim)} .dot.held{background:var(--held)}
+  h2{font-size:12px; text-transform:uppercase; letter-spacing:.1em; font-weight:600; margin:0}
+  .cnt{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--muted); background:var(--surface-2);
+       padding:1px 7px; border-radius:9px; font-weight:500}
+  .note{color:var(--muted); font-size:12px; max-width:100ch; line-height:1.4}
+  .note b{color:var(--ink)}
+  .note .warn{color:var(--crit); font-weight:600}
+  .empty{color:var(--muted); font-size:12px; font-style:italic; padding:2px 0}
+
+  /* cards */
+  .cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:8px}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:7px; padding:8px 11px; box-shadow:var(--shadow)}
+  .card.buy{border-left:3px solid var(--fire)}
+  .card.slot{border-left:3px solid var(--held)}
+  /* soft green/red by current gain/loss on held slots (2026-09-27) */
+  .card.slot.up{background:var(--accent-soft); border-left-color:var(--accent)}
+  .card.slot.down{background:var(--crit-soft); border-left-color:var(--crit)}
+  .card.slot.open .tkr{font-size:13px}
+  .card.slot.open{border-left:3px dashed var(--line); background:transparent; box-shadow:none}
+  .card .tkr{font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:15px; letter-spacing:.01em}
+  .card .rule{font-size:11px; color:var(--muted); margin-top:1px; line-height:1.35}
+  .grid2{display:grid; grid-template-columns:auto 1fr; gap:0 10px; margin-top:5px; font-size:12px; line-height:1.45}
+  .grid2 span{color:var(--muted)}
+  .grid2 b span.pos{color:var(--accent); white-space:nowrap}
+  .grid2 b span.neg{color:var(--crit); white-space:nowrap}
+  .grid2 b{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-weight:500; text-align:right}
+  .pos{color:var(--accent)} .neg{color:var(--crit)}
+
+  /* pills */
+  .pill{display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:9.5px; font-weight:600;
+        text-transform:uppercase; letter-spacing:.07em; padding:1.5px 6px; border-radius:3px; vertical-align:1.5px; margin-left:5px}
+  .pill.fire{background:var(--fire-soft); color:var(--fire)}
+  .pill.held{background:var(--held-soft); color:var(--held)}
+  .pill.dim{background:var(--dim-soft); color:var(--dim)}
+  .pill.trail{background:var(--accent-soft); color:var(--accent)}
+
+  /* controls */
+  .ctrl{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+  .ctrl input[type=search]{
+    font-family:inherit; font-size:13px; padding:6px 10px; border:1px solid var(--line);
+    border-radius:6px; background:var(--surface); color:var(--ink); min-width:190px}
+  .ctrl input[type=search]:focus-visible, .chip:focus-visible, th[data-k]:focus-visible{
+    outline:2px solid var(--accent); outline-offset:2px}
+  .chip{font-family:inherit; font-size:11.5px; font-weight:500; padding:5px 11px; border-radius:14px;
+        border:1px solid var(--line); background:var(--surface); color:var(--ink-2); cursor:pointer}
+  .chip[aria-pressed="true"]{background:var(--ink); color:var(--ground); border-color:var(--ink)}
+  .shown{font-size:12px; color:var(--muted); margin-left:auto; font-variant-numeric:tabular-nums}
+
+  /* tables */
+  .scroll{overflow-x:auto; border:1px solid var(--line); border-radius:7px; background:var(--surface)}
+  table{width:100%; border-collapse:collapse; font-size:12.5px}
+  th,td{padding:3px 10px; text-align:left; white-space:nowrap}
+  thead th{position:sticky; top:0; z-index:1; background:var(--surface-2); color:var(--muted);
+           font-size:10px; text-transform:uppercase; letter-spacing:.07em; font-weight:600;
+           border-bottom:1px solid var(--line); user-select:none}
+  th[data-k]{cursor:pointer}
+  th[data-k]:hover{color:var(--ink)}
+  th .ar{opacity:0; margin-left:3px}
+  th[aria-sort] .ar{opacity:1; color:var(--accent)}
+  td.num,th.num{text-align:right; font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums}
+  td.tkr{font-family:"IBM Plex Mono",monospace; font-weight:600}
+  tbody tr{border-top:1px solid var(--line-2)}
+  tbody tr:hover{background:var(--surface-2)}
+  .halves-one{color:var(--muted)}
+  .ev-s{color:var(--accent); font-weight:600}
+
+  footer{border-top:1px solid var(--line); padding-top:8px; color:var(--muted); font-size:11px; line-height:1.5}
+
+  @media (max-width:620px){
+    h1{font-size:21px}
+    .asof{text-align:left}
+    .wrap{padding:14px 12px 36px; gap:16px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>The Signal Bench</h1>
+      <div class="sub">Every fully vetted signal, plus today's firings. Mirrors the 5&nbsp;a.m. dashboard emailed from the Mac.</div>
+    </div>
+    <div class="asof">as of close<b id="asof">—</b><span id="today"></span></div>
+  </header>
+
+  <div class="rail" id="rail"></div>
+
+  <section>
+    <div class="hd"><div class="dot held"></div><h2>Slots</h2><span class="cnt" id="slotCnt"></span></div>
+    <div class="cards" id="slots"></div>
+  </section>
+
+  <section>
+    <div class="hd"><div class="dot fire"></div><h2>New Buy Candidates</h2><span class="cnt" id="buyCnt"></span></div>
+    <div id="buys"></div>
+  </section>
+
+  <section>
+    <div class="hd"><div class="dot crit"></div><h2>Sells / Time-Window Review</h2><span class="cnt" id="sellCnt"></span></div>
+    <div id="sells"></div>
+  </section>
+
+  <section>
+    <div class="hd"><div class="dot"></div><h2>MSTR / BTC Exit Tracker</h2></div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Ticker</th><th class="num">Price</th><th class="num">40-wk avg</th><th class="num">Trigger</th><th class="num">Distance</th><th class="num">Position</th><th class="num">Value</th><th class="num">Gain / loss</th></tr></thead>
+        <tbody id="exit"></tbody>
+      </table>
+    </div>
+    <div class="note">Trend-only rule with a 5% band around the 40-week average, not the oscillator bench. Informational, not tax advice; confirm wash-sale treatment with your CPA before acting on MSTR. Trend charts are in the emailed PDF.</div>
+  </section>
+
+  <section>
+    <div class="hd"><div class="dot"></div><h2>Signal Scorecard — Plain Win/Loss Record</h2><span class="cnt" id="scoreCnt"></span></div>
+    <div class="note" id="scoreNote">Of the times each signal actually fired in its own real price history, how many times did it put money in your pocket. A win here is <b>any trade that closed with a real gain</b>, not only one that hit its full profit target — a trade that ran out its time window up 2% still counts. Source is backtested history for every signal, the same trade history behind the profit factor and Sharpe numbers above; live trading is one position so far, too little to score on its own.</div>
+    <div class="ctrl">
+      <input type="search" id="sq" placeholder="Filter by ticker…" aria-label="Filter scorecard by ticker">
+      <span class="shown" id="sshown"></span>
+    </div>
+    <div class="scroll">
+      <table id="scoreTable">
+        <thead><tr>
+          <th data-k="0" tabindex="0" role="button">Ticker<span class="ar">▾</span></th>
+          <th>Record</th>
+          <th class="num" data-k="4" tabindex="0" role="button">Win %<span class="ar">▾</span></th>
+          <th class="num" data-k="9" tabindex="0" role="button">Avg per trade<span class="ar">▾</span></th>
+          <th class="num" data-k="6" tabindex="0" role="button">Avg loss<span class="ar">▾</span></th>
+          <th class="num" data-k="7" tabindex="0" role="button">Avg days<span class="ar">▾</span></th>
+        </tr></thead>
+        <tbody id="scoreBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="liveRecordSection" hidden>
+    <div class="hd"><div class="dot held"></div><h2>Live Trade Record</h2><span class="cnt" id="liveRecordCnt"></span></div>
+    <div class="card" id="liveRecordCard"></div>
+  </section>
+
+  <footer>
+    A signal is on the bench only if it passes all nine: at least 8 real trades tested • profit factor ≥ 1.5 • Sharpe ≥ 0.3 • profit target ≥ 5% (no upper limit) • exits within 30 trading days • statistically real in at least one half of its own price history • no single trade over 40% of the signal’s total gains • the weaker half of history not measurably edgeless • a live win rate of 90%+ on 8–11 recorded trades or 80%+ on 12+ (added 2026-09-19).<br>
+    Signal and backtest data only, never a live brokerage feed. Slot and position detail comes from the manually maintained position log. Not investment advice; profit-target and stop-loss exits are handled by the broker's bracket order.
+  </footer>
+</div>
+
+<script type="application/json" id="payload">{"asof":"2026-09-25","today":"2026-09-27","slots":8,"sum":{"benchSignals":28,"benchTickers":27,"evaluatedToday":28,"notEvaluated":0,"bothHalves":11,"oneHalf":17,"strong":12,"moderate":16,"testingSignals":16,"scorecardProblem":null},"bench":[["AER","CCI",10,30,26,10.79,1.76,"S",1,0,2],["CHKP","RSI",5,30,13,20.0,1.51,"M",0,0,0],["SF","RSI",5,15,10,20.0,1.42,"S",1,0,2],["GS","RSI",7,30,9,20.0,1.41,"S",1,0,0],["WFC","RSI",10,30,10,9.22,1.39,"S",0,0,0],["PM","RSI",5,30,9,20.0,1.3,"M",1,0,0],["XOM","CCI",5,30,26,5.492,1.23,"M",1,0,0],["IBM","RSI",10,20,12,4.33,1.14,"M",0,0,0],["REG","RSI",7,30,9,20.0,1.13,"S",1,0,2],["JPM","RSI",7,20,8,20.0,1.11,"M",0,0,0],["ARW","RSI",5,30,13,4.84,1.03,"M",0,0,0],["OHI","CCI",10,30,22,5.67,1.02,"S",1,0,0],["PG","RSI",5,30,10,20.0,1.01,"M",0,0,0],["ADBE","RSI",5,30,21,3.872,0.98,"M",0,0,0],["GOOG","RSI",5,10,10,20,0.94,"M",0,0,0],["APAM","RSI",5,30,18,3.635,0.92,"S",1,0,0],["MUR","RSI",5,10,14,3.32,0.92,"M",0,0,0],["ARW","CCI",5,30,21,3.55,0.91,"S",1,0,0],["STWD","MFI",5,30,11,5.39,0.91,"S",1,0,0],["BC","RSI",5,10,12,5.336,0.88,"S",0,0,2],["CRC","RSI",10,5,11,5.04,0.86,"M",0,0,0],["BAC","RSI",5,30,12,5.336,0.85,"M",0,0,0],["VMC","RSI",5,15,10,3.84,0.84,"M",0,0,0],["CRM","RSI",5,5,18,3.07,0.81,"M",0,0,0],["CCK","RSI",7,15,16,2.805,0.8,"S",1,0,2],["EPRT","RSI",5,30,10,7.733,0.75,"S",0,0,1],["PLAB","RSI",5,10,12,4.67,0.74,"M",0,0,0],["MAS","RSI",5,30,13,2.83,0.61,"M",0,0,0]],"testing":[["AAPL","MFI14 < 20",7,1,20.0,1.25],["DHI","RSI14 < 30",7,1,1.99,0.48],["IBM","MFI14 < 20",7,1,20.0,1.22],["JPM","MFI14 < 20",7,1,5.152,0.83],["PAGP","RSI14 < 30",7,1,20,0.95],["SARO","RSI14 < 30",7,1,2.2,0.55],["SFM","RSI14 < 30",7,1,3.91,0.89],["TTC","RSI14 < 30",7,1,1.86,0.34],["MCD","MFI14 < 20",6,2,4.95,0.78],["OBDC","RSI14 < 30",6,2,3.085,0.55],["XYZ","RSI14 < 30",6,2,2.28,0.71],["BN","RSI14 < 30",5,3,20,0.94],["CUZ","MFI14 < 20",5,3,2.39,0.42],["V","MFI14 < 20",5,3,2.79,0.65],["V","RSI14 < 30",5,3,20.0,1.11],["CVX","MFI14 < 20",4,4,20.0,1.17]],"scorecard":[["AER","CCI",26,23,88.5,8.53,-10.09,14.0,0,6.38],["CHKP","RSI",13,13,100.0,4.75,null,13.4,1,4.75],["SF","RSI",10,10,100.0,4.89,null,5.4,1,4.89],["GS","RSI",9,9,100.0,6.89,null,13.2,1,6.89],["WFC","RSI",10,9,90.0,9.89,-10.09,12.8,1,7.89],["PM","RSI",9,9,100.0,4.89,null,11.9,1,4.89],["XOM","CCI",26,21,80.8,4.89,-3.74,15.2,0,3.23],["IBM","RSI",12,10,83.3,7.25,-7.69,15.0,1,4.76],["REG","RSI",9,9,100.0,5.7,null,16.3,1,5.7],["JPM","RSI",8,8,100.0,6.11,null,11.0,1,6.11],["ARW","RSI",13,12,92.3,4.89,-10.09,10.0,1,3.74],["OHI","CCI",22,18,81.8,6.32,-5.8,23.7,0,4.12],["PG","RSI",10,10,100.0,3.94,null,21.4,1,3.94],["ADBE","RSI",21,18,85.7,4.64,-7.19,10.0,0,2.95],["GOOG","RSI",10,9,90.0,4.65,-1.67,4.9,1,4.02],["APAM","RSI",18,15,83.3,4.89,-6.73,8.8,0,2.96],["MUR","RSI",14,12,85.7,4.89,-7.14,4.1,1,3.18],["ARW","CCI",21,17,81.0,4.89,-5.19,14.9,0,2.97],["STWD","MFI",11,10,90.9,4.89,-7.04,12.1,1,3.81],["BC","RSI",12,11,91.7,4.89,-10.09,3.4,1,3.65],["CRC","RSI",11,10,90.9,6.35,-10.09,3.9,1,4.86],["BAC","RSI",12,11,91.7,4.89,-10.09,9.2,1,3.65],["VMC","RSI",10,9,90.0,4.89,-10.09,8.3,1,3.4],["CRM","RSI",18,15,83.3,3.79,-5.34,3.6,0,2.27],["CCK","RSI",16,13,81.2,5.45,-8.41,9.1,0,2.85],["EPRT","RSI",10,9,90.0,4.89,-5.7,14.5,1,3.84],["PLAB","RSI",12,10,83.3,4.41,-4.62,5.8,1,2.91],["MAS","RSI",13,11,84.6,4.89,-10.09,10.9,1,2.59]],"buys":[{"ticker":"EPRT","signal":"Relative-strength oversold reading (RSI14 < 30)","reading":20.5,"close":26.53,"ceiling":26.81,"target":5,"window":30,"stop":10,"streak":12,"sc":[10,9,90.0,1,4.89,-5.7,14.5,3.84]}],"positions":[{"ticker":"UNP","signal":"CCI oversold reading (CCI20 < -100)","entryDate":"2026-09-04","entryPrice":287.12,"close":273.79,"targetPct":5.0,"stopPct":10.0,"windowExpires":"2026-09-28","held":15,"left":0,"firingToday":false,"sc":null,"shares":1.0,"gainDollars":-13.33},{"ticker":"AER","signal":"CCI oversold reading (CCI20 < -100)","entryDate":"2026-09-15","entryPrice":139.5,"close":149.21,"targetPct":10.0,"stopPct":10.0,"windowExpires":"2026-10-27","held":9,"left":21,"firingToday":false,"sc":[26,23,88.5,0,8.53,-10.09,14.0,6.38],"shares":19.0,"gainDollars":184.49},{"ticker":"BC","signal":"Relative-strength oversold reading (RSI14 < 30)","entryDate":"2026-09-21","entryPrice":67.18,"close":67.19,"targetPct":5.0,"stopPct":10.0,"windowExpires":"2026-10-05","held":5,"left":5,"firingToday":false,"sc":[12,11,91.7,1,4.89,-10.09,3.4,3.65],"shares":10.0,"gainDollars":0.1},{"ticker":"CCK","signal":"Relative-strength oversold reading (RSI14 < 30)","entryDate":"2026-09-21","entryPrice":108.66,"close":108.06,"targetPct":7.0,"stopPct":10.0,"windowExpires":"2026-10-12","held":5,"left":10,"firingToday":false,"sc":[16,13,81.2,0,5.45,-8.41,9.1,2.85],"shares":10.0,"gainDollars":-6.0},{"ticker":"REG","signal":"Relative-strength oversold reading (RSI14 < 30)","entryDate":"2026-09-22","entryPrice":73.18,"close":73.23,"targetPct":7.0,"stopPct":10.0,"windowExpires":"2026-11-03","held":4,"left":26,"firingToday":false,"sc":[9,9,100.0,1,5.7,null,16.3,5.7],"shares":6.0,"gainDollars":0.3},{"ticker":"SF","signal":"Relative-strength oversold reading (RSI14 < 30)","entryDate":"2026-09-25","entryPrice":68.95,"close":70.35,"targetPct":5.0,"stopPct":10.0,"windowExpires":"2026-10-16","held":1,"left":14,"firingToday":true,"sc":[10,10,100.0,1,4.89,null,5.4,4.89],"shares":15.0,"gainDollars":21.0}],"sells":[],"near":[["BAC","RSI14 < 30",31.0,30,1.0,56.7],["APAM","RSI14 < 30",30.8,30,0.8,36.16],["BC","RSI14 < 30",31.9,30,1.9,67.19],["XOM","CCI20 < -100",-54.0,-100,46.0,160.59],["CCK","RSI14 < 30",35.5,30,5.5,108.06],["GS","RSI14 < 30",36.2,30,6.2,935.45],["ADBE","RSI14 < 30",36.6,30,6.6,235.47],["VMC","RSI14 < 30",37.1,30,7.1,245.0]],"exit":[{"ticker":"MSTR","position":"long","since":"2026-09-18","sma40":135.29,"buyTrigger":142.06,"sellTrigger":128.53,"price":158.61,"triggerLabel":"sell trigger","triggerPrice":128.53,"distancePct":18.97,"qty":27,"avgCost":275.87,"value":4282.47,"costBasis":7448.49,"gl":-3166.02,"glPct":-42.51,"account":"Individual / Taxable"},{"ticker":"BTC","position":"long","since":"2026-08-21","sma40":73452.57,"buyTrigger":77125.2,"sellTrigger":69779.95,"price":84093.13,"triggerLabel":"sell trigger","triggerPrice":69779.95,"distancePct":17.02,"qty":0.07484818,"avgCost":89698.37,"value":6294.22,"costBasis":6713.76,"gl":-419.54,"glPct":-6.25,"account":"Fidelity Crypto / Taxable"}],"liveRecord":{"total":10,"wins":3,"losses":7,"winPct":30.0,"totalDollars":-42.44,"totalPct":-1.22,"recent":[{"ticker":"UNH","signal":"Money-flow oversold reading (MFI14 < 20)","entryDate":"2026-08-17","exitDate":"2026-09-21","returnPct":-5.19,"shares":1.0,"gainDollars":-20.7,"win":false,"exitReason":"sold, per Fidelity alert"},{"ticker":"TT","signal":"CCI oversold reading (CCI20 < -100)","entryDate":"2026-08-31","exitDate":"2026-09-21","returnPct":-3.27,"shares":1.0,"gainDollars":-14.63,"win":false,"exitReason":"sold, per Fidelity alert"},{"ticker":"INDV","signal":"Relative-strength oversold reading (RSI14 < 30)","entryDate":"2026-09-03","exitDate":"2026-09-21","returnPct":-0.51,"shares":3.0,"gainDollars":-0.54,"win":false,"exitReason":"sold, per Fidelity alert"},{"ticker":"CALM","signal":"Relative-strength oversold reading (RSI14 < 30)","entryDate":"2026-09-08","exitDate":"2026-09-21","returnPct":-3.05,"shares":8.0,"gainDollars":-18.24,"win":false,"exitReason":"sold, per Fidelity alert"},{"ticker":"THO","signal":"CCI oversold reading (CCI20 < -100)","entryDate":"2026-09-03","exitDate":"2026-09-18","returnPct":-10.0,"shares":2.0,"gainDollars":-15.1,"win":false,"exitReason":"sold, per Fidelity alert"},{"ticker":"OSW","signal":"Relative-strength oversold reading (RSI14 < 30)","entryDate":"2026-09-04","exitDate":"2026-09-18","returnPct":-1.66,"shares":23.0,"gainDollars":-8.51,"win":false,"exitReason":"sold, per Fidelity alert"},{"ticker":"RRR","signal":"Relative-strength oversold reading (RSI14 < 30)","entryDate":"2026-09-03","exitDate":"2026-09-14","returnPct":-1.28,"shares":2.0,"gainDollars":-1.46,"win":false,"exitReason":"window expired 2026-09-11, closed manually"},{"ticker":"VLY","signal":"Relative-strength oversold reading (RSI14 < 30)","entryDate":"2026-09-01","exitDate":"2026-09-10","returnPct":2.37,"shares":30.0,"gainDollars":9.6,"win":true,"exitReason":"window expired 2026-09-09, closed manually the next session"},{"ticker":"WMT","signal":"CCI oversold reading (CCI20 < -100)","entryDate":"2026-08-31","exitDate":"2026-09-03","returnPct":4.99,"shares":5.0,"gainDollars":25.73,"win":true,"exitReason":"target hit, resting limit order filled"},{"ticker":"BYD","signal":"Relative-strength oversold reading (RSI14 < 30)","entryDate":"2026-09-01","exitDate":"2026-09-02","returnPct":0.61,"shares":3.0,"gainDollars":1.41,"win":true,"exitReason":"discretionary - signal cut from the bench"}],"byMonth":[{"month":"2026-09","label":"September 2026","trades":10,"wins":3,"losses":7,"totalDollars":-42.44,"totalPct":-1.22}]}}</script>
+<script>
+const D = JSON.parse(document.getElementById("payload").textContent);
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const money = n => "$" + n.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
+const RULE = {RSI:"RSI14 < 30", MFI:"MFI14 < 20", CCI:"CCI20 < -100"};
+const pct1 = n => (n>=0?"+":"") + n.toFixed(2) + "%";
+// Win-rate line for the Slots and New Buy Candidates cards (2026-09-19, Evan's
+// request: those cards show win-rate instead of the signal's name). sc is the
+// compact [n, wins, winPct, thin] array build_artifact_payload() now attaches
+// to each position/buy -- see signal_scorecard.json via scorecard_entry().
+// null when the position's original signal is no longer on the live bench
+// (its win/loss record is no longer tracked once cut) -- never guessed.
+const scLine = sc => sc
+  ? `${sc[2].toFixed(1)}% win (${sc[1]} of ${sc[0]})${sc[3] ? " · still building" : ""}`
+  : "No live track record (signal no longer on bench)";
+// Buy-candidate win-rate line (2026-09-22, Evan's request): drops "still
+// building" and instead shows avg gain/avg loss/avg time, using sc[4..6]
+// (added to the compact array alongside sc[0..3] -- see build_artifact_
+// payload()'s _sc()). avg_win/avg_loss can themselves be null.
+const buyLine = sc => {
+  if (!sc) return "No live track record (signal no longer on bench)";
+  // 2026-09-27: "avg win" replaced by avg result per trade (sc[7], wins and
+  // losses blended) -- avg win mostly repeated the profit target back.
+  const avgTrade = sc[7] != null ? pct1(sc[7]) : "—";
+  const avgLoss = sc[5] != null ? pct1(sc[5]) : "—";
+  const avgDays = sc[6] != null ? `${sc[6].toFixed(1)}d` : "—";
+  return `${sc[2].toFixed(1)}% win (${sc[1]} of ${sc[0]}) · avg per trade ${avgTrade} · avg loss ${avgLoss} · avg time ${avgDays}`;
+};
+
+$("asof").textContent = D.asof;
+$("today").textContent = "generated " + D.today;
+
+/* ---- stat rail ---- */
+const S = D.sum;
+const firingCount = D.bench.filter(r => r[10] === 1).length;
+$("rail").innerHTML = [
+  ["" + D.positions.length + " / " + D.slots, "Slots Filled", ""],
+  [D.buys.length, "New Buys", D.buys.length ? "lit" : ""],
+  [D.sells.length, "Sells Due", D.sells.length ? "lit" : ""],
+  [S.benchSignals, "Bench", "key"]
+].map(([n,l,c]) => `<div class="tile ${c}"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+
+/* ---- live trade record ---- */
+if (D.liveRecord && D.liveRecord.total > 0) {
+  const lr = D.liveRecord;
+  $("liveRecordSection").hidden = false;
+  $("liveRecordCnt").textContent = lr.total + " closed trade" + (lr.total === 1 ? "" : "s");
+  const chips = lr.recent.map(t => {
+    const bg = t.win ? "var(--accent-soft)" : "var(--crit-soft)";
+    const fg = t.win ? "var(--accent)" : "var(--crit)";
+    const dollarStr = t.gainDollars != null
+      ? ` / ${t.gainDollars >= 0 ? "+" : "-"}$${Math.abs(t.gainDollars).toFixed(2)}`
+      : "";
+    return `<span class="pill" style="background:${bg};color:${fg}" title="${esc(t.exitReason)}">${esc(t.ticker)} ${pct1(t.returnPct)}${dollarStr}</span>`;
+  }).join(" ");
+  // Monthly totals (2026-09-22, Evan's request): net $ and a dollar-weighted
+  // total % per month, starting with September, from every closed trade
+  // (compute_live_trade_record()'s byMonth, not just the chips above).
+  // null totalDollars/totalPct means a trade that month is missing its
+  // shares figure, never a guessed number.
+  const monthRows = (lr.byMonth || []).map(m => {
+    const dollarStr = m.totalDollars != null
+      ? `${m.totalDollars >= 0 ? "+" : "-"}$${Math.abs(m.totalDollars).toFixed(2)}`
+      : "incomplete, missing share data";
+    const pctStr = m.totalPct != null ? ` (${m.totalPct >= 0 ? "+" : ""}${m.totalPct.toFixed(2)}%)` : "";
+    return `<div style="font-size:12px; color:var(--muted)"><b style="color:var(--ink)">${esc(m.label)}:</b> ${dollarStr}${pctStr} · ${m.wins}-${m.losses}</div>`;
+  }).join("");
+  $("liveRecordCard").innerHTML = `
+    <div style="display:flex; align-items:baseline; gap:20px; flex-wrap:wrap">
+      <div><span class="mono" style="font-size:20px; font-weight:600">${lr.wins}-${lr.losses}</span>
+        <span style="color:var(--muted); font-size:12px; margin-left:6px">record</span></div>
+      <div><span class="mono" style="font-size:20px; font-weight:600; color:${lr.winPct>=50?'var(--accent)':'var(--crit)'}">${lr.winPct.toFixed(1)}%</span>
+        <span style="color:var(--muted); font-size:12px; margin-left:6px">win rate</span></div>
+      <div>${lr.totalDollars != null
+        ? `<span class="mono" style="font-size:20px; font-weight:600; color:${lr.totalDollars>=0?'var(--accent)':'var(--crit)'}">${lr.totalDollars>=0?'+':'-'}${money(Math.abs(lr.totalDollars))}</span>` +
+          (lr.totalPct != null ? `<span class="mono" style="font-size:14px; margin-left:6px; color:${lr.totalPct>=0?'var(--accent)':'var(--crit)'}">(${lr.totalPct>=0?'+':''}${lr.totalPct.toFixed(2)}%)</span>` : "")
+        : `<span style="color:var(--muted)">incomplete, missing share data</span>`}
+        <span style="color:var(--muted); font-size:12px; margin-left:6px">total won/lost</span></div>
+    </div>
+    <div style="margin-top:6px; display:flex; gap:5px; flex-wrap:wrap">${chips}</div>
+    <div style="margin-top:6px; display:flex; flex-direction:column; gap:2px">${monthRows}</div>
+    <div class="note" style="margin-top:4px">Real trades placed through the system, not backtested history — separate from the Signal Scorecard above.</div>`;
+}
+
+/* ---- slots ---- */
+$("slotCnt").textContent = D.positions.length + " of " + D.slots + " filled";
+let slotHtml = D.positions.map(p => {
+  const chg = ((p.close - p.entryPrice) / p.entryPrice * 100);
+  const target = p.entryPrice * (1 + p.targetPct/100);
+  // Units held + current $ gain/loss (2026-09-27). null = no shares figure
+  // on the ledger row, shown as "—", never guessed.
+  const g = p.gainDollars;
+  const dir = g == null ? "" : (g > 0 ? "up" : (g < 0 ? "down" : ""));
+  const units = p.shares != null ? (+p.shares.toFixed(4)).toLocaleString() : "—";
+  const glStr = g != null ? `${g >= 0 ? "+" : "-"}${money(Math.abs(g))}` : "—";
+  return `<div class="card slot ${dir}">
+    <div class="tkr">${esc(p.ticker)}${p.firingToday?'<span class="pill fire">still firing</span>':''}</div>
+    <div class="rule">${buyLine(p.sc)}</div>
+    <div class="grid2">
+      <span>Purchased</span><b>${money(p.entryPrice)}${p.shares != null ? `(${units})` : ""} <span class="${chg>=0?'pos':'neg'}">(${money(p.close)}/${chg>=0?'+':''}${chg.toFixed(2)}%)</span></b>
+      <span>Gain / loss</span><b><span class="${g==null?'':(g>=0?'pos':'neg')}">${glStr}</span></b>
+      <span>Target</span><b>${money(target)} · ${p.targetPct}%</b>
+      <span>Held / left</span><b>${p.held}d / ${p.left}d</b>
+    </div></div>`;
+}).join("");
+for (let i = D.positions.length; i < D.slots; i++)
+  slotHtml += `<div class="card slot open"><div class="tkr" style="color:var(--muted);font-weight:500">Slot ${i+1} — open</div></div>`;
+$("slots").innerHTML = slotHtml;
+
+/* ---- buys ---- */
+$("buyCnt").textContent = D.buys.length;
+$("buys").innerHTML = D.buys.length ? `<div class="cards">` + D.buys.map(b => `
+  <div class="card buy">
+    <div class="tkr">${esc(b.ticker)}<span class="pill fire">firing · day ${b.streak}</span></div>
+    <div class="rule">${buyLine(b.sc)}</div>
+    <div class="grid2">
+      <span>Reading</span><b>${b.reading}</b>
+      <span>Close</span><b>${money(b.close)}</b>
+      <span>Entry ceiling</span><b>${money(b.ceiling)}</b>
+      <span>Avg win / days</span><b>${b.sc && b.sc[4] != null ? pct1(b.sc[4]) : "—"} / ${b.sc && b.sc[6] != null ? b.sc[6].toFixed(1) + "d" : "—"}</b>
+      <span>Stop</span><b>${b.stop}%</b>
+    </div></div>`).join("") + `</div>`
+  : `<div class="empty">No new buy candidates today.</div>`;
+
+/* ---- sells ---- */
+$("sellCnt").textContent = D.sells.length;
+$("sells").innerHTML = D.sells.length
+  ? `<div class="cards">` + D.sells.map(s => `<div class="card"><div class="tkr">${esc(s.ticker)}</div>
+      <div class="rule">${esc(s.signal)}</div><div class="note" style="margin-top:6px">${esc(s.note)}</div></div>`).join("") + `</div>`
+  : `<div class="empty">Nothing due for time-window review.</div>`;
+
+/* ---- exit tracker ---- */
+$("exit").innerHTML = D.exit.map(e => `<tr title="since ${esc(e.since)} · ${esc(e.account)}">
+  <td class="tkr">${esc(e.ticker)}<span class="pill ${e.position==='long'?'held':'dim'}">${esc(e.position)}</span></td>
+  <td class="num">${money(e.price)}</td>
+  <td class="num">${money(e.sma40)}</td>
+  <td class="num">${money(e.triggerPrice)} <span style="color:var(--muted)">${esc(e.triggerLabel.replace(" trigger",""))}</span></td>
+  <td class="num">${e.distancePct}%</td>
+  <td class="num">${e.qty} @ ${money(e.avgCost)}</td>
+  <td class="num">${money(e.value)}</td>
+  <td class="num ${e.gl>=0?'pos':'neg'}">${e.gl>=0?'+':'-'}${money(Math.abs(e.gl))} (${e.glPct}%)</td></tr>`).join("");
+
+/* ---- signal scorecard ---- */
+/* row shape: [ticker, IND, n, wins, winPct, avgWin, avgLoss, avgDays, thin, avgTrade] (avgTrade added 2026-09-27) */
+const SC = D.scorecard || [];
+$("scoreCnt").textContent = SC.length;
+if (S.scorecardProblem) {
+  $("scoreNote").innerHTML += ` <span class="warn">Not available today: ${esc(S.scorecardProblem)}</span>`;
+}
+let scSortK = 4, scSortDir = -1;
+
+function renderScorecard(){
+  const q = $("sq").value.trim().toUpperCase();
+  let rows = SC.filter(r => !q || r[0].includes(q));
+  rows = rows.slice().sort((a,b) => {
+    const x = a[scSortK], y = b[scSortK];
+    const c = (typeof x === "number") ? x - y : String(x).localeCompare(String(y));
+    return c * scSortDir;
+  });
+  $("sshown").textContent = SC.length
+    ? (rows.length === SC.length ? `showing all ${rows.length}` : `showing ${rows.length} of ${SC.length}`)
+    : "";
+  $("scoreBody").innerHTML = rows.length ? rows.map(r => {
+    const [tkr, ind, n, wins, winPct, avgWin, avgLoss, avgDays, thin, avgTrade] = r;
+    const winStr = (avgTrade == null) ? "—" : `<span class="${avgTrade>=0?"pos":"neg"}">${pct1(avgTrade)}</span>`;
+    const lossStr = (avgLoss === null) ? "—" : `<span class="neg">${pct1(avgLoss)}</span>`;
+    return `<tr>
+      <td class="tkr">${esc(tkr)}</td>
+      <td>${wins} of ${n}</td>
+      <td class="num">${winPct.toFixed(1)}%</td>
+      <td class="num">${winStr}</td>
+      <td class="num">${lossStr}</td>
+      <td class="num">${avgDays.toFixed(1)}d</td></tr>`;
+  }).join("") : `<tr><td colspan="6" style="color:var(--muted);font-style:italic">${SC.length ? "No signals match these filters." : "Not available."}</td></tr>`;
+}
+
+document.querySelectorAll('#scoreTable th[data-k]').forEach(th => {
+  const act = () => {
+    const k = +th.dataset.k;
+    if (k === scSortK) { scSortDir = -scSortDir; }
+    else { scSortK = k; scSortDir = (k === 0 || k === 1) ? 1 : -1; }
+    document.querySelectorAll('#scoreTable th[data-k]').forEach(o => o.removeAttribute("aria-sort"));
+    th.setAttribute("aria-sort", scSortDir === 1 ? "ascending" : "descending");
+    th.querySelector(".ar").textContent = scSortDir === 1 ? "▴" : "▾";
+    renderScorecard();
+  };
+  th.addEventListener("click", act);
+  th.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); } });
+});
+$("sq").addEventListener("input", renderScorecard);
+document.querySelector('#scoreTable th[data-k="4"]').setAttribute("aria-sort","descending");
+document.querySelector('#scoreTable th[data-k="4"] .ar').textContent = "▾";
+renderScorecard();
+</script>
+
+</body></html>
