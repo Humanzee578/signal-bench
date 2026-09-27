@@ -1,4 +1,29 @@
-<!doctype html><html><head><meta charset=utf-8><title>The Signal Bench</title><meta name="robots" content="noindex,nofollow"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Signal Bench"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="theme-color" content="#F6F7F5"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" type="image/png" href="apple-touch-icon.png"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf-8><!--sb:inject--><title>The Signal Bench</title><meta name="robots" content="noindex,nofollow"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Signal Bench"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="theme-color" content="#F6F7F5"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" type="image/png" href="apple-touch-icon.png"><!--/sb:inject--><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body><!--sb:inject--><div id="sbWarn" role="alert" hidden style="padding:10px 16px;font:600 13px/1.45 -apple-system,BlinkMacSystemFont,sans-serif;background:#F8E6E3;color:#A33A2C;border-bottom:1px solid #A33A2C"></div>
+<script>
+(function(){
+  var msgs = [];
+  function show(m){
+    if (msgs.indexOf(m) >= 0) return;
+    msgs.push(m);
+    var el = document.getElementById("sbWarn");
+    if (!el) return;
+    el.innerHTML = msgs.map(function(x){ return "<div>" + x + "</div>"; }).join("");
+    el.hidden = false;
+  }
+  window.addEventListener("error", function(){
+    show('Heads up: this page hit an error showing today\'s data, so its design is probably behind the Claude artifact. Ask Claude to "sync the Signal Bench website." Until then, use the <a href="https://claude.ai/code/artifact/d33a14d7-b5a9-4894-ba01-4f53b5b56c86" style="color:inherit">artifact</a>.');
+  });
+  document.addEventListener("DOMContentLoaded", function(){
+    try {
+      var d = JSON.parse(document.getElementById("payload").textContent);
+      var days = Math.floor((Date.now() - new Date(d.asof + "T00:00:00")) / 86400000);
+      if (days > 4) show("Heads up: this data is from " + d.asof + " (" + days + " days old). The Mac's 5 AM job may have stopped.");
+    } catch (e) {
+      show("Heads up: this page couldn't read its data.");
+    }
+  });
+})();
+</script><!--/sb:inject-->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
   :root{color-scheme:light}
