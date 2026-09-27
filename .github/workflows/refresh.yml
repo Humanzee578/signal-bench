@@ -2,12 +2,10 @@ name: Refresh Signal Bench
 
 on:
   schedule:
-    # UTC times. 11:20 UTC = 6:20 AM Central (daylight) / 5:20 AM (standard),
-    # after the Mac's 5 AM build has synced to Drive. Later runs are catch-ups.
-    - cron: "20 11 * * *"
-    - cron: "20 13 * * *"
-    - cron: "20 17 * * *"
-    - cron: "20 22 * * *"
+    - cron: "17 * * * *"   # hourly; only commits when something changed
+  push:
+    branches: [main]
+    paths: [index.html]   # a new design copy dropped in gets its website additions right away
   workflow_dispatch:
 
 permissions:
@@ -22,7 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Pull latest payload from Drive
+      - name: Build page (website additions + latest payload from Drive)
+        id: build
+        continue-on-error: true
         run: python3 refresh_payload.py
       - name: Commit if changed
         run: |
@@ -32,6 +32,9 @@ jobs:
             git config user.name "signal-bench-bot"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add index.html
-            git commit -m "Refresh payload $(date -u +%Y-%m-%dT%H:%MZ)"
+            git commit -m "Refresh page $(date -u +%Y-%m-%dT%H:%MZ)"
             git push
           fi
+      - name: Fail if the payload could not be loaded
+        if: steps.build.outcome == 'failure'
+        run: exit 1
