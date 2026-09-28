@@ -346,8 +346,11 @@ let slotHtml = D.positions.map(p => {
       <span>Gain / loss</span><b><span class="${g==null?'':(g>=0?'pos':'neg')}">${glStr}</span></b>
       <span>Target</span><b>${money(target)} · ${p.targetPct}%</b>
       <span>Held / left</span><b>${p.held}d / ${p.left}d</b>
-    </div></div>`;
+    </div>${p.windowClockNote ? `<div class="note" style="margin-top:4px">${esc(p.windowClockNote.charAt(0).toUpperCase() + p.windowClockNote.slice(1))}</div>` : ""}</div>`;
 }).join("");
+// 2026-09-27: window clock starts after the signal stops firing; p.windowClockNote
+// explains when a position's window started (or that it hasn't yet). Absent in
+// payloads built before that change, so the line simply doesn't show.
 for (let i = D.positions.length; i < D.slots; i++)
   slotHtml += `<div class="card slot open"><div class="tkr" style="color:var(--muted);font-weight:500">Slot ${i+1} — open</div></div>`;
 $("slots").innerHTML = slotHtml;
