@@ -1,29 +1,5 @@
-<!doctype html><html><head><meta charset=utf-8><!--sb:inject--><title>The Signal Bench</title><meta name="robots" content="noindex,nofollow"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Signal Bench"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="theme-color" content="#F6F7F5"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" type="image/png" href="apple-touch-icon.png"><!--/sb:inject--><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body><!--sb:inject--><div id="sbWarn" role="alert" hidden style="padding:10px 16px;font:600 13px/1.45 -apple-system,BlinkMacSystemFont,sans-serif;background:#F8E6E3;color:#A33A2C;border-bottom:1px solid #A33A2C"></div>
-<script>
-(function(){
-  var msgs = [];
-  function show(m){
-    if (msgs.indexOf(m) >= 0) return;
-    msgs.push(m);
-    var el = document.getElementById("sbWarn");
-    if (!el) return;
-    el.innerHTML = msgs.map(function(x){ return "<div>" + x + "</div>"; }).join("");
-    el.hidden = false;
-  }
-  window.addEventListener("error", function(){
-    show('Heads up: this page hit an error showing today\'s data, so its design is probably behind the Claude artifact. Ask Claude to "sync the Signal Bench website." Until then, use the <a href="https://claude.ai/code/artifact/d33a14d7-b5a9-4894-ba01-4f53b5b56c86" style="color:inherit">artifact</a>.');
-  });
-  document.addEventListener("DOMContentLoaded", function(){
-    try {
-      var d = JSON.parse(document.getElementById("payload").textContent);
-      var days = Math.floor((Date.now() - new Date(d.asof + "T00:00:00")) / 86400000);
-      if (days > 4) show("Heads up: this data is from " + d.asof + " (" + days + " days old). The Mac's 5 AM job may have stopped.");
-    } catch (e) {
-      show("Heads up: this page couldn't read its data.");
-    }
-  });
-})();
-</script><!--/sb:inject-->
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>The Signal Bench</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
   :root{color-scheme:light}
@@ -160,6 +136,13 @@
   .halves-one{color:var(--muted)}
   .ev-s{color:var(--accent); font-weight:600}
 
+  /* guardrails + which-history box, older-years line (2026-10-04) */
+  .gbox{display:flex; flex-direction:column; gap:3px; font-size:12.5px}
+  .gbox .gline b{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums}
+  .galert{color:var(--crit); font-weight:600}
+  .rule.warnline{color:var(--crit)}
+  .rule.says{color:var(--ink-2); font-weight:500}
+
   footer{border-top:1px solid var(--line); padding-top:8px; color:var(--muted); font-size:11px; line-height:1.5}
 
   @media (max-width:620px){
@@ -174,12 +157,17 @@
   <header>
     <div>
       <h1>The Signal Bench</h1>
-      <div class="sub">Every fully vetted signal, plus today's firings. Mirrors the 5&nbsp;a.m. dashboard emailed from the Mac.</div>
+      <div class="sub">Every fully vetted signal, plus today's firings. Mirrors the 3:45&nbsp;p.m. dashboard emailed from the Mac after each market close.</div>
     </div>
     <div class="asof">as of close<b id="asof">—</b><span id="today"></span></div>
   </header>
 
   <div class="rail" id="rail"></div>
+
+  <section id="guardSection" hidden>
+    <div class="hd"><div class="dot" id="guardDot"></div><h2>Guardrails &amp; Which History</h2></div>
+    <div class="card gbox" id="guardCard"></div>
+  </section>
 
   <section>
     <div class="hd"><div class="dot held"></div><h2>Slots</h2><span class="cnt" id="slotCnt"></span></div>
@@ -285,6 +273,32 @@ $("rail").innerHTML = [
   [S.benchSignals, "Bench", "key"]
 ].map(([n,l,c]) => `<div class="tile ${c}"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
 
+/* ---- guardrails + which history (2026-10-04) ----
+   The two pause rules (10% drop from the high, 3 losses in a row) and whether the
+   clean live trades match the recent or the older backtest. Warnings only. Both
+   come from the same code the emailed dashboard uses; absent in older payloads. */
+if (D.guardrails || D.historyMatch) {
+  const G = D.guardrails || {}, M = D.historyMatch || {};
+  let h = "";
+  if (G.ok && !G.empty) {
+    h += `<div class="gline">Account <b>${G.drawdown_pct >= 0 ? "+" : ""}${G.drawdown_pct.toFixed(1)}%</b> from its high (pause at −10%) · losing streak <b>${G.streak}</b> (pause at 3) · one slot <b>${money(G.slot_dollars)}</b> · cash <b>${money(G.cash)}</b></div>`;
+    (G.alerts || []).forEach(a => { h += `<div class="galert">${esc(a)}</div>`; });
+    if (!(G.alerts || []).length) h += `<div class="note">Both clear. Warnings only; nothing here blocks a buy.</div>`;
+    if (G.streak_trips) h += `<div class="note">Losing-streak rule tripped ${G.streak_trips} time(s) so far, first on ${esc(G.first_streak_trip)}; longest streak ${G.longest_streak}.</div>`;
+  } else if (G.ok === false) {
+    h += `<div class="note">Guardrails not available: ${esc(G.error || "")}</div>`;
+  }
+  if (M.ok) {
+    const ex = M.excluded || {};
+    h += M.n
+      ? `<div class="gline" style="margin-top:4px">Which history: clean trades <b>${M.avg >= 0 ? "+" : ""}${M.avg.toFixed(2)}%</b> a trade, <b>${M.win.toFixed(0)}%</b> wins over ${M.n}. <b>${esc(M.verdict)}</b></div>`
+      : `<div class="gline" style="margin-top:4px">Which history: no clean trades yet.</div>`;
+    if (M.total) h += `<div class="note">Clean = bought while the signal was firing, signal on today's bench, closed by target, stop or window. ${M.n || 0} of ${M.total} closed trades qualify (left out: ${ex.off_bench || 0} off the bench, ${ex.not_on_signal || 0} bought after the signal stopped, ${ex.not_rule_exit || 0} closed early or by choice). All ${M.total}: ${M.allAvg >= 0 ? "+" : ""}${M.allAvg}% a trade, ${M.allWin}% wins.</div>`;
+  }
+  if ((G.alerts || []).length) $("guardDot").className = "dot crit";
+  if (h) { $("guardSection").hidden = false; $("guardCard").innerHTML = h; }
+}
+
 /* ---- live trade record ---- */
 if (D.liveRecord && D.liveRecord.total > 0) {
   const lr = D.liveRecord;
@@ -328,6 +342,16 @@ if (D.liveRecord && D.liveRecord.total > 0) {
 }
 
 /* ---- slots ---- */
+// 2026-10-04: size vs one slot, the "Rule says" line and the older-years
+// (2008 to 2021) check, all from the payload; absent fields simply don't show.
+const olderLine = o => o ? `<div class="rule ${o.call === "demote" ? "warnline" : ""}" style="margin-top:3px">${o.call === "demote" ? "⚠ " : ""}${esc(o.text)}</div>` : "";
+const slotExtras = p => {
+  const G = D.guardrails || {};
+  const pct = (p.costDollars != null && G.slot_dollars) ? Math.round(100 * p.costDollars / G.slot_dollars) : null;
+  return (pct != null ? `<div class="rule" style="margin-top:3px">Size: ${money(p.costDollars)}, ${pct}% of a slot${pct < 80 || pct > 120 ? " ⚠" : ""}</div>` : "")
+    + (p.ruleSays ? `<div class="rule says" style="margin-top:3px">${esc(p.ruleSays)}</div>` : "")
+    + olderLine(p.olderYears);
+};
 $("slotCnt").textContent = D.positions.length + " of " + D.slots + " filled";
 let slotHtml = D.positions.map(p => {
   const chg = ((p.close - p.entryPrice) / p.entryPrice * 100);
@@ -346,7 +370,7 @@ let slotHtml = D.positions.map(p => {
       <span>Gain / loss</span><b><span class="${g==null?'':(g>=0?'pos':'neg')}">${glStr}</span></b>
       <span>Target</span><b>${money(target)} · ${p.targetPct}%</b>
       <span>Held / left</span><b>${p.held}d / ${p.left}d</b>
-    </div>${p.windowClockNote ? `<div class="note" style="margin-top:4px">${esc(p.windowClockNote.charAt(0).toUpperCase() + p.windowClockNote.slice(1))}</div>` : ""}</div>`;
+    </div>${p.windowClockNote ? `<div class="note" style="margin-top:4px">${esc(p.windowClockNote.charAt(0).toUpperCase() + p.windowClockNote.slice(1))}</div>` : ""}${slotExtras(p)}</div>`;
 }).join("");
 // 2026-09-27: window clock starts after the signal stops firing; p.windowClockNote
 // explains when a position's window started (or that it hasn't yet). Absent in
@@ -361,6 +385,8 @@ $("buys").innerHTML = D.buys.length ? `<div class="cards">` + D.buys.map(b => `
   <div class="card buy">
     <div class="tkr">${esc(b.ticker)}<span class="pill fire">firing · day ${b.streak}</span></div>
     <div class="rule">${buyLine(b.sc)}</div>
+    ${b.sharesToBuy != null ? `<div class="rule says" style="margin-top:3px">Buy ${b.sharesToBuy} shares, about ${money(b.buyDollars)} at the ceiling (one slot is ${money(b.slotDollars)}${b.cashShort ? ", limited by cash on hand" : ""})</div>` : ""}
+    ${olderLine(b.olderYears)}
     <div class="grid2">
       <span>Reading</span><b>${b.reading}</b>
       <span>Close</span><b>${money(b.close)}</b>
