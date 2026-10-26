@@ -189,9 +189,15 @@
 
   <div class="rail" id="rail"></div>
 
-  <section id="guardSection" hidden>
-    <div class="hd"><div class="dot" id="guardDot"></div><h2>Guardrails &amp; Which History</h2></div>
-    <div class="card gbox" id="guardCard"></div>
+  <section id="alertSection" hidden>
+    <div class="hd"><div class="dot fire"></div><h2>Price Alerts</h2><span class="cnt" id="alertCnt"></span></div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Ticker</th><th>Alert</th><th class="num">Level</th><th class="num">Last</th><th class="num">Needs to move</th></tr></thead>
+        <tbody id="alertBody"></tbody>
+      </table>
+    </div>
+    <div class="note" id="alertNote">Reminders only. Nothing here places a trade.</div>
   </section>
 
   <section>
@@ -207,17 +213,6 @@
   <section>
     <div class="hd"><div class="dot crit"></div><h2>Sells / Time-Window Review</h2><span class="cnt" id="sellCnt"></span></div>
     <div id="sells"></div>
-  </section>
-
-  <section>
-    <div class="hd"><div class="dot"></div><h2>MSTR / BTC Exit Tracker</h2></div>
-    <div class="scroll">
-      <table>
-        <thead><tr><th>Ticker</th><th class="num">Price</th><th class="num">40-wk avg</th><th class="num">Trigger</th><th class="num">Distance</th><th class="num">Position</th><th class="num">Value</th><th class="num">Gain / loss</th></tr></thead>
-        <tbody id="exit"></tbody>
-      </table>
-    </div>
-    <div class="note">Trend-only rule with a 5% band around the 40-week average, not the oscillator bench. Informational, not tax advice; confirm wash-sale treatment with your CPA before acting on MSTR. Trend charts are in the emailed PDF.</div>
   </section>
 
   <section>
@@ -298,31 +293,31 @@ $("rail").innerHTML = [
   [S.benchSignals, "Bench", "key"]
 ].map(([n,l,c]) => `<div class="tile ${c}"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
 
-/* ---- guardrails + which history (2026-10-04) ----
-   The two pause rules (10% drop from the high, 3 losses in a row) and whether the
-   clean live trades match the recent or the older backtest. Warnings only. Both
-   come from the same code the emailed dashboard uses; absent in older payloads. */
-if (D.guardrails || D.historyMatch) {
-  const G = D.guardrails || {}, M = D.historyMatch || {};
-  let h = "";
-  if (G.ok && !G.empty) {
-    h += `<div class="gline">Account <b>${G.drawdown_pct >= 0 ? "+" : ""}${G.drawdown_pct.toFixed(1)}%</b> from its high (pause at −10%) · losing streak <b>${G.streak}</b> (pause at 3) · one slot <b>${money(G.slot_dollars)}</b> · cash <b>${money(G.cash)}</b></div>`;
-    (G.alerts || []).forEach(a => { h += `<div class="galert">${esc(a)}</div>`; });
-    if (!(G.alerts || []).length) h += `<div class="note">Both clear. Warnings only; nothing here blocks a buy.</div>`;
-    if (G.streak_trips) h += `<div class="note">Losing-streak rule tripped ${G.streak_trips} time(s) so far, first on ${esc(G.first_streak_trip)}; longest streak ${G.longest_streak}.</div>`;
-  } else if (G.ok === false) {
-    h += `<div class="note">Guardrails not available: ${esc(G.error || "")}</div>`;
-  }
-  if (M.ok) {
-    const ex = M.excluded || {};
-    h += M.n
-      ? `<div class="gline" style="margin-top:4px">Which history: clean trades <b>${M.avg >= 0 ? "+" : ""}${M.avg.toFixed(2)}%</b> a trade, <b>${M.win.toFixed(0)}%</b> wins over ${M.n}. <b>${esc(M.verdict)}</b></div>`
-      : `<div class="gline" style="margin-top:4px">Which history: no clean trades yet.</div>`;
-    if (M.total) h += `<div class="note">Clean = bought while the signal was firing, signal on today's bench, closed by target, stop or window. ${M.n || 0} of ${M.total} closed trades qualify (left out: ${ex.off_bench || 0} off the bench, ${ex.not_on_signal || 0} bought after the signal stopped, ${ex.not_rule_exit || 0} closed early or by choice). All ${M.total}: ${M.allAvg >= 0 ? "+" : ""}${M.allAvg}% a trade, ${M.allWin}% wins.</div>`;
-  }
-  if ((G.alerts || []).length) $("guardDot").className = "dot crit";
-  if (h) { $("guardSection").hidden = false; $("guardCard").innerHTML = h; }
-}
+/* ---- price alerts ---- */
+(function(){
+  const P = D.priceAlerts;
+  if (!P || P.empty) return;
+  $("alertSection").hidden = false;
+  if (P.ok === false) { $("alertBody").innerHTML = ""; $("alertNote").textContent = "Price alerts not available: " + (P.error || ""); return; }
+  const all = (P.alerts || []).slice().sort((a,b) => {
+    const ka = a.price == null ? Infinity : (a.status === "triggered" ? -1 : Math.abs(a.pctToGo));
+    const kb = b.price == null ? Infinity : (b.status === "triggered" ? -1 : Math.abs(b.pctToGo));
+    return ka - kb;
+  });
+  const list = all.slice(0, 10);
+  const totalAlerts = P.total || all.length;
+  $("alertCnt").textContent = totalAlerts > 10 ? "nearest 10 of " + totalAlerts : totalAlerts + " watching";
+  $("alertBody").innerHTML = list.map(a => {
+    const lvl = "$" + Number(a.level).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+    const act = (a.action || "alert") + (a.direction === "at_or_below" ? " at or below" : " at or above");
+    if (a.price == null) return `<tr><td class="tkr">${esc(a.ticker)}</td><td>${esc(act)}</td><td class="num">${lvl}</td><td class="num">no price yet</td><td class="num">—</td></tr>`;
+    const last = "$" + Number(a.price).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+    const hit = a.status === "triggered";
+    const move = hit ? `<span class="pos">LEVEL HIT</span>` : `${a.direction === "at_or_below" ? "fall" : "rise"} ${Math.abs(a.pctToGo).toFixed(1)}%`;
+    return `<tr><td class="tkr">${esc(a.ticker)}</td><td>${esc(act)}</td><td class="num">${lvl}</td><td class="num">${last}</td><td class="num">${move}</td></tr>`;
+  }).join("");
+  $("alertNote").textContent = (P.statusLine || "") + " Prices are the latest daily close. Reminders only, nothing here places a trade.";
+})();
 
 /* ---- live trade record ---- */
 if (D.liveRecord && D.liveRecord.total > 0) {
@@ -370,13 +365,6 @@ if (D.liveRecord && D.liveRecord.total > 0) {
 // 2026-10-04: size vs one slot, the "Rule says" line and the older-years
 // (2008 to 2021) check, all from the payload; absent fields simply don't show.
 const olderLine = o => o ? `<div class="rule ${o.call === "demote" ? "warnline" : ""}" style="margin-top:3px">${o.call === "demote" ? "⚠ " : ""}${esc(o.text)}</div>` : "";
-const slotExtras = p => {
-  const G = D.guardrails || {};
-  const pct = (p.costDollars != null && G.slot_dollars) ? Math.round(100 * p.costDollars / G.slot_dollars) : null;
-  return (pct != null ? `<div class="rule" style="margin-top:3px">Size: ${money(p.costDollars)}, ${pct}% of a slot${pct < 80 || pct > 120 ? " ⚠" : ""}</div>` : "")
-    + (p.ruleSays ? `<div class="rule says" style="margin-top:3px">${esc(p.ruleSays)}</div>` : "")
-    + olderLine(p.olderYears);
-};
 $("slotCnt").textContent = D.positions.length + " of " + D.slots + " filled";
 let slotHtml = D.positions.map(p => {
   const chg = ((p.close - p.entryPrice) / p.entryPrice * 100);
@@ -395,7 +383,7 @@ let slotHtml = D.positions.map(p => {
       <span>Gain / loss</span><b><span class="${g==null?'':(g>=0?'pos':'neg')}">${glStr}</span></b>
       <span>Target</span><b>${money(target)} · ${p.targetPct}%</b>
       <span>Held / left</span><b>${p.held}d / ${p.left}d</b>
-    </div>${p.windowClockNote ? `<div class="note" style="margin-top:4px">${esc(p.windowClockNote.charAt(0).toUpperCase() + p.windowClockNote.slice(1))}</div>` : ""}${slotExtras(p)}</div>`;
+    </div></div>`;
 }).join("");
 // 2026-09-27: window clock starts after the signal stops firing; p.windowClockNote
 // explains when a position's window started (or that it hasn't yet). Absent in
@@ -427,17 +415,6 @@ $("sells").innerHTML = D.sells.length
   ? `<div class="cards">` + D.sells.map(s => `<div class="card"><div class="tkr">${esc(s.ticker)}</div>
       <div class="rule">${esc(s.signal)}</div><div class="note" style="margin-top:6px">${esc(s.note)}</div></div>`).join("") + `</div>`
   : `<div class="empty">Nothing due for time-window review.</div>`;
-
-/* ---- exit tracker ---- */
-$("exit").innerHTML = D.exit.map(e => `<tr title="since ${esc(e.since)} · ${esc(e.account)}">
-  <td class="tkr">${esc(e.ticker)}<span class="pill ${e.position==='long'?'held':'dim'}">${esc(e.position)}</span></td>
-  <td class="num">${money(e.price)}</td>
-  <td class="num">${money(e.sma40)}</td>
-  <td class="num">${money(e.triggerPrice)} <span style="color:var(--muted)">${esc(e.triggerLabel.replace(" trigger",""))}</span></td>
-  <td class="num">${e.distancePct}%</td>
-  <td class="num">${e.qty} @ ${money(e.avgCost)}</td>
-  <td class="num">${money(e.value)}</td>
-  <td class="num ${e.gl>=0?'pos':'neg'}">${e.gl>=0?'+':'-'}${money(Math.abs(e.gl))} (${e.glPct}%)</td></tr>`).join("");
 
 /* ---- signal scorecard ---- */
 /* row shape: [ticker, IND, n, wins, winPct, avgWin, avgLoss, avgDays, thin, avgTrade] (avgTrade added 2026-09-27) */
