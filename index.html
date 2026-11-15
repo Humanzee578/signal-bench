@@ -211,6 +211,12 @@
     <div class="cards" id="sbCards"></div>
   </section>
 
+  <section id="washSection" hidden>
+    <div class="hd"><div class="dot crit"></div><h2>Wash Sale Watch</h2><span class="cnt" id="washCnt"></span></div>
+    <div class="cards" id="washCards"></div>
+    <div class="note" id="washNote"></div>
+  </section>
+
   <section>
     <div class="hd"><div class="dot fire"></div><h2>New Buy Candidates</h2><span class="cnt" id="buyCnt"></span></div>
     <div id="buys"></div>
@@ -246,6 +252,13 @@
   <section id="liveRecordSection" hidden>
     <div class="hd"><div class="dot held"></div><h2>Live Trade Record</h2><span class="cnt" id="liveRecordCnt"></span></div>
     <div class="card" id="liveRecordCard"></div>
+  </section>
+
+  <section id="tradeHistorySection" hidden>
+    <div class="hd"><div class="dot held"></div><h2>Trade History</h2><span class="cnt" id="thCnt"></span></div>
+    <div class="card" id="thSummary"></div>
+    <div class="scroll"><table class="th-table"><thead><tr><th>Stock</th><th>Bought</th><th class="num">Bought at</th><th>Sold</th><th class="num">Sold at</th><th class="num">Shares</th><th class="num">Profit / loss</th><th class="num">%</th><th>Signal</th><th>How it ended</th></tr></thead><tbody id="thBody"></tbody></table></div>
+    <div class="note" id="thNote"></div>
   </section>
 
   <footer>
@@ -320,9 +333,10 @@ $("rail").innerHTML = [
     const last = "$" + Number(a.price).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
     const hit = a.status === "triggered";
     const move = hit ? `<span class="pos">LEVEL HIT</span>` : `${a.direction === "at_or_below" ? "fall" : "rise"} ${Math.abs(a.pctToGo).toFixed(1)}%`;
-    return `<tr><td class="tkr">${esc(a.ticker)}</td><td>${esc(act)}</td><td class="num">${lvl}</td><td class="num">${last}</td><td class="num">${move}</td></tr>`;
+    return `<tr><td class="tkr">${esc(a.ticker)}${a.washSale ? ' <span class="neg" title="' + esc(a.washSale) + '">⚠</span>' : ""}</td><td>${esc(act)}</td><td class="num">${lvl}</td><td class="num">${last}</td><td class="num">${move}</td></tr>`;
   }).join("");
-  $("alertNote").textContent = (P.statusLine || "") + " Prices are the latest daily close. Reminders only, nothing here places a trade.";
+  const ws = [...new Set((P.alerts || []).filter(a => a.washSale).map(a => "⚠ " + a.ticker + ": " + a.washSale))];
+  $("alertNote").textContent = (P.statusLine || "") + " Prices are the latest daily close. Reminders only, nothing here places a trade." + (ws.length ? " " + ws.join(" ") : "");
 })();
 
 /* ---- live trade record ---- */
@@ -367,13 +381,39 @@ if (D.liveRecord && D.liveRecord.total > 0) {
     <div class="note" style="margin-top:4px">Real trades placed through the system, not backtested history — separate from the Signal Scorecard above.</div>`;
 }
 
+/* ---- trade history ---- */
+if (D.tradeHistory && D.tradeHistory.rows && D.tradeHistory.rows.length) {
+  const T = D.tradeHistory;
+  const sg = n => (n >= 0 ? "+" : "-") + money(Math.abs(n));
+  const col = n => n == null ? "var(--muted)" : (n >= 0 ? "var(--accent)" : "var(--crit)");
+  $("tradeHistorySection").hidden = false;
+  $("thCnt").textContent = T.closedCount + " closed, " + T.openCount + " open";
+  $("thSummary").innerHTML = `<div style="display:flex; align-items:baseline; gap:20px; flex-wrap:wrap">
+    <div><span class="mono" style="font-size:20px; font-weight:600; color:${col(T.totalDollars)}">${T.totalDollars != null ? sg(T.totalDollars) : "n/a"}</span>${T.totalPct != null ? `<span class="mono" style="font-size:14px; margin-left:6px; color:${col(T.totalPct)}">(${pct1(T.totalPct)})</span>` : ""}<span style="color:var(--muted); font-size:12px; margin-left:6px">closed trades</span></div>
+    <div><span class="mono" style="font-size:20px; font-weight:600">${T.wins}-${T.losses}</span><span style="color:var(--muted); font-size:12px; margin-left:6px">won-lost</span></div>
+    <div><span class="mono" style="font-size:20px; font-weight:600; color:${col(T.openDollars)}">${T.openDollars != null ? sg(T.openDollars) : "n/a"}</span><span style="color:var(--muted); font-size:12px; margin-left:6px">open (not yet sold)</span></div></div>`;
+  $("thBody").innerHTML = T.rows.map(r => {
+    const open = r.status === "open";
+    return `<tr><td class="tkr">${esc(r.ticker)}${r.partial ? ' <span style="color:var(--muted);font-weight:400;font-size:11px">(part)</span>' : ""}</td>
+      <td>${esc(r.buyDate || "")}</td><td class="num">${r.buyPrice != null ? money(r.buyPrice) : "—"}</td>
+      <td>${open ? '<span style="color:var(--muted)">Open, now</span>' : esc(r.sellDate || "")}</td>
+      <td class="num">${r.sellPrice != null ? money(r.sellPrice) : "—"}</td>
+      <td class="num">${r.shares != null ? +r.shares.toFixed(3) : "—"}</td>
+      <td class="num" style="color:${col(r.dollars)}">${r.dollars != null ? sg(r.dollars) : "—"}</td>
+      <td class="num" style="color:${col(r.pct)}">${r.pct != null ? pct1(r.pct) : "—"}</td>
+      <td>${esc(r.signal || "")}</td><td>${esc(r.exitLabel || "")}</td></tr>`;
+  }).join("");
+  $("thNote").textContent = "Trades placed through the system, newest first. Open positions show the latest daily close. Where more shares were added later, Bought at is the average cost. Holdings outside the system are not listed.";
+}
+
 /* ---- slots ---- */
 // 2026-10-04: size vs one slot, the "Rule says" line and the older-years
 // (2008 to 2021) check, all from the payload; absent fields simply don't show.
 const olderLine = o => o ? `<div class="rule ${o.call === "demote" ? "warnline" : ""}" style="margin-top:3px">${o.call === "demote" ? "⚠ " : ""}${esc(o.text)}</div>` : "";
 $("slotCnt").textContent = D.positions.length + " of " + D.slots + " filled";
 let slotHtml = D.positions.map(p => {
-  const chg = ((p.close - p.entryPrice) / p.entryPrice * 100);
+  const cost = p.avgCost != null ? p.avgCost : p.entryPrice;   // 2026-11-13: average cost of the shares still held
+  const chg = ((p.close - cost) / cost * 100);
   const target = p.entryPrice * (1 + p.targetPct/100);
   // Units held + current $ gain/loss (2026-09-27). null = no shares figure
   // on the ledger row, shown as "—", never guessed.
@@ -385,7 +425,7 @@ let slotHtml = D.positions.map(p => {
     <div class="tkr">${esc(p.ticker)}${p.firingToday?'<span class="pill fire">still firing</span>':''}</div>
     <div class="rule">${buyLine(p.sc)}</div>
     <div class="grid2">
-      <span>Purchased</span><b>${money(p.entryPrice)}${p.shares != null ? `(${units})` : ""} <span class="${chg>=0?'pos':'neg'}">(${money(p.close)}/${chg>=0?'+':''}${chg.toFixed(2)}%)</span></b>
+      <span>${p.avgCost != null && Math.abs(p.avgCost - p.entryPrice) > 0.005 ? "Avg cost" : "Purchased"}</span><b>${money(cost)}${p.shares != null ? `(${units})` : ""} <span class="${chg>=0?'pos':'neg'}">(${money(p.close)}/${chg>=0?'+':''}${chg.toFixed(2)}%)</span></b>
       <span>Gain / loss</span><b><span class="${g==null?'':(g>=0?'pos':'neg')}">${glStr}</span></b>
       <span>Target</span><b>${money(target)} · ${p.targetPct}%</b>
       <span>Held / left</span><b>${p.held}d / ${p.left}d</b>
@@ -424,8 +464,33 @@ $("slots").innerHTML = slotHtml;
         <span>Second-buy level</span><b>${money(r.trigger)}</b>
         <span>Now</span><b>${r.close != null ? money(r.close) : "—"}${r.distancePct != null && r.state === "watch" ? ` <span class="rule">(level is ${r.distancePct.toFixed(1)}% below)</span>` : ""}</b>
       </div>
-      <div class="rule says" style="margin-top:4px">${esc(r.text)}</div></div>`).join("");
+      <div class="rule says" style="margin-top:4px">${esc(r.text)}</div>
+      ${r.washSale ? `<div class="rule warnline" style="margin-top:3px;font-weight:600">⚠ ${esc(r.washSale)}</div>` : ""}</div>`).join("");
   $("sbCards").innerHTML = head + rows;
+})();
+
+/* ---- wash sale watch (2026-11-14) ---- */
+// Loss sales with a 30-day "don't rebuy" countdown, from scripts/wash_sale_watch.py via the payload.
+(function(){
+  const W = D.washSale;
+  if (!W || !W.notices || !W.notices.length) return;
+  $("washSection").hidden = false;
+  $("washCnt").textContent = W.notices.length;
+  $("washCards").innerHTML = W.notices.map(n => {
+    const pill = n.status === "triggered" ? `<span class="pill" style="background:var(--crit-soft);color:var(--crit)">likely wash sale</span>`
+      : (n.asset === "crypto" ? `<span class="pill dim">crypto, watch only</span>`
+      : `<span class="pill" style="background:var(--crit-soft);color:var(--crit)">don't rebuy · ${n.daysToSafe} day${n.daysToSafe === 1 ? "" : "s"} left</span>`);
+    return `<div class="card" style="border-left:3px solid var(--crit)">
+      <div class="tkr">${esc(n.ticker)}${pill}</div>
+      <div class="grid2">
+        <span>Sold</span><b>${n.shares} @ ${money(n.salePrice)} on ${esc(n.saleDate)}</b>
+        <span>Loss</span><b>${n.loss != null ? `<span class="neg">-${money(n.loss)}</span>` : "unknown"}</b>
+        <span>Safe to buy again</span><b>${esc(n.safeDate)}</b>
+      </div>
+      <div class="rule says" style="margin-top:4px">${esc(n.text)}</div>
+      ${n.basis ? `<div class="rule" style="margin-top:3px">Cost from ${esc(n.basis)}.</div>` : ""}</div>`;
+  }).join("");
+  $("washNote").textContent = W.rule + " " + W.limits;
 })();
 
 /* ---- buys ---- */
@@ -434,6 +499,7 @@ $("buys").innerHTML = D.buys.length ? `<div class="cards">` + D.buys.map(b => `
   <div class="card buy">
     <div class="tkr">${esc(b.ticker)}<span class="pill fire">firing · day ${b.streak}</span></div>
     <div class="rule">${buyLine(b.sc)}</div>
+    ${b.washSale ? `<div class="rule warnline" style="margin-top:3px;font-weight:600">⚠ ${esc(b.washSale)}</div>` : ""}
     ${b.sharesToBuy != null ? `<div class="rule says" style="margin-top:3px">Buy ${b.sharesToBuy} shares, about ${money(b.buyDollars)} at the ceiling (one slot is ${money(b.slotDollars)}${b.cashShort ? ", limited by cash on hand" : ""})</div>` : ""}
     ${olderLine(b.olderYears)}
     <div class="grid2">
@@ -504,5 +570,6 @@ document.querySelector('#scoreTable th[data-k="4"]').setAttribute("aria-sort","d
 document.querySelector('#scoreTable th[data-k="4"] .ar').textContent = "▾";
 renderScorecard();
 </script>
+
 
 </body></html>
